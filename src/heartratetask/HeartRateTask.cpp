@@ -206,3 +206,41 @@ int HeartRateTask::CurrentTaskDelay() {
       return portMAX_DELAY;
   }
 }
+
+void HeartRateTask::ReadAndPrintPpgData(int seconds) {
+  // Start the PPG sensor
+  heartRateSensor.Enable();
+  ppg.Reset(true);
+  vTaskDelay(100);
+
+  // Calculate the number of iterations based on the provided seconds and the defined delay time
+  int iterations = seconds * 1000 / ppg.deltaTms;
+
+  SEGGER_RTT_printf(0, "Iterations: %u\n", iterations);
+
+  for (int i = 0; i < iterations; ++i) {
+    // Preprocess and get the raw data from the sensor
+    ppg.Preprocess(heartRateSensor.ReadHrs(), heartRateSensor.ReadAls());
+
+    // Get PPG data
+    const std::array<uint16_t, Pinetime::Controllers::Ppg::dataLength>& ppgData = ppg.GetPpgData();
+
+    // Print the length of the PPG data
+    SEGGER_RTT_printf(0, "Length of PPG Data: %u\n", ppgData.size());
+
+    // Print the buffer using SEGGER_RTT
+    SEGGER_RTT_printf(0, "PPG Data: ");
+    for (const auto& data : ppgData) {
+      SEGGER_RTT_printf(0, "%u, ", data);
+    }
+    SEGGER_RTT_printf(0, "\n");
+
+    // Delay for deltaTms milliseconds
+    vTaskDelay(ppg.deltaTms);
+  }
+
+  // Stop the PPG sensor
+  heartRateSensor.Disable();
+  ppg.Reset(true);
+  vTaskDelay(100);
+}

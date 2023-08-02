@@ -22,6 +22,8 @@ namespace Pinetime {
       static constexpr uint16_t dataLength = 64;
       static constexpr uint16_t spectrumLength = dataLength >> 1;
 
+      const std::array<uint16_t, dataLength>& GetPpgData() const;
+
     private:
       // The sampling frequency (Hz) based on sampling time in milliseconds (DeltaTms)
       static constexpr float sampleFreq = 1000.0f / static_cast<float>(deltaTms);

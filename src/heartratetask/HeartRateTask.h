@@ -27,6 +27,8 @@ namespace Pinetime {
       void Work();
       void PushMessage(Messages msg);
 
+	  void ReadAndPrintPpgData(int seconds);
+
     private:
       static void Process(void* instance);
       void StartMeasurement();

@@ -290,3 +290,7 @@ float Ppg::HeartRateAverage(float hr) {
   }
   return avg;
 }
+
+const std::array<uint16_t, Ppg::dataLength>& Ppg::GetPpgData() const {
+  return dataHRS;
+}

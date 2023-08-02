@@ -1,4 +1,5 @@
 #include "buttonhandler/ButtonHandler.h"
+#include "SEGGER_RTT.h"
 
 using namespace Pinetime::Controllers;
 
@@ -18,6 +19,7 @@ ButtonActions ButtonHandler::HandleEvent(Events event) {
 
   if (event == Events::Press) {
     buttonPressed = true;
+    SEGGER_RTT_printf(0, "Hello World from SEGGER!\r\n");
   } else if (event == Events::Release) {
     releaseTime = xTaskGetTickCount();
     buttonPressed = false;

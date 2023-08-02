@@ -449,6 +449,7 @@ void SystemTask::UpdateMotion() {
 }
 
 void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
+  heartRateApp.PushMessage(Pinetime::Applications::HeartRateTask::Messages::WakeUp);
   if (IsSleeping()) {
     return;
   }

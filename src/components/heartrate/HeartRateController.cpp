@@ -1,12 +1,14 @@
 #include "components/heartrate/HeartRateController.h"
 #include <heartratetask/HeartRateTask.h>
 #include <systemtask/SystemTask.h>
+#include "SEGGER_RTT.h"
 
 using namespace Pinetime::Controllers;
 
 void HeartRateController::Update(HeartRateController::States newState, uint8_t heartRate) {
   this->state = newState;
   if (this->heartRate != heartRate) {
+    SEGGER_RTT_printf(0, "heart rate updated %d!\r\n", heartRate);
     this->heartRate = heartRate;
     service->OnNewHeartRateValue(heartRate);
   }

@@ -2,15 +2,34 @@
     "version": "0.1.0",
     "configurations": [
         {
+            "name": "Debug with JLink",
+            "type": "cortex-debug",
+            "cortex-debug.armToolchainPath":"/opt/gcc-arm-none-eabi-9-2020-q2-update/bin",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/src/pinetime-app-1.12.0.out",
+            "request": "launch",
+            "servertype": "jlink",
+            "gdbPath" : "/opt/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-gdb",
+            "device": "nRF52832_xxAA",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "vscode",
+            "rtos": "FreeRTOS",
+            "interface": "swd",
+            "env": {
+                "ARM_NONE_EABI_TOOLCHAIN_PATH": "/opt/gcc-arm-none-eabi-9-2020-q2-update/",
+                "armToolchainPath": "/opt/gcc-arm-none-eabi-9-2020-q2-update/bin"
+            },
+        },
+        {
             "name": "Debug - Openocd docker Remote",
             "type":"cortex-debug",
-            "cortex-debug.armToolchainPath":"${env:ARM_NONE_EABI_TOOLCHAIN_PATH}/bin",
+            "cortex-debug.armToolchainPath":"/opt/gcc-arm-none-eabi-9-2020-q2-update/bin",
             "cwd": "${workspaceRoot}",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
             "servertype": "external",
             // This may need to be arm-none-eabi-gdb depending on your system
-            "gdbPath" : "${env:ARM_NONE_EABI_TOOLCHAIN_PATH}/bin/arm-none-eabi-gdb",
+            "gdbPath" : "/opt/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-gdb",
             // Connect to an already running OpenOCD instance
             "gdbTarget": "host.docker.internal:3333",
             "svdFile": "${workspaceRoot}/nrf52.svd",
@@ -24,13 +43,13 @@
         {
             "name": "Debug - Openocd Local",
             "type":"cortex-debug",
-            "cortex-debug.armToolchainPath":"${env:ARM_NONE_EABI_TOOLCHAIN_PATH}/bin",
+            "cortex-debug.armToolchainPath":"/opt/gcc-arm-none-eabi-9-2020-q2-update/bin",
             "cwd": "${workspaceRoot}",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
             "servertype": "openocd",
             // This may need to be arm-none-eabi-gdb depending on your system
-            "gdbPath" : "${env:ARM_NONE_EABI_TOOLCHAIN_PATH}/bin/arm-none-eabi-gdb",
+            "gdbPath" : "/opt/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-gdb",
             // Connect to an already running OpenOCD instance
             "gdbTarget": "localhost:3333",
             "svdFile": "${workspaceRoot}/nrf52.svd",
@@ -44,7 +63,7 @@
         {
             "cwd": "${workspaceRoot}",
             // TODO: find better way to get latest build filename
-            "executable": "./build/src/pinetime-app-1.3.0.out",
+            "executable": "${workspaceFolder}/build/src/pinetime-app-1.12.0.out",
             "name": "Debug OpenOCD ST-LINK pinetime-app-1.3.0.out",
             "request": "launch",
             "type": "cortex-debug",

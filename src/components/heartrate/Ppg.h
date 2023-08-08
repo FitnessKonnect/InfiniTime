@@ -9,12 +9,33 @@
 #define FFT_SPEED_OVER_PRECISION
 #include "libs/arduinoFFT/src/arduinoFFT.h"
 
+// dataLength: This is the length of the data buffer that is used to store the raw PPG data.
+// spectrumLength: This is the length of the spectrum buffer that is used to store the power spectrum of the PPG data.
+// sampleFreq: This is the sampling frequency of the PPG sensor.
+// freqResolution: This is the frequency resolution of the PPG sensor.
+// hrROIbegin: This is the beginning of the heart rate region of interest in the spectrum.
+// hrROIend: This is the end of the heart rate region of interest in the spectrum.
+// minHR: This is the minimum heart rate that is considered valid.
+// maxHR: This is the maximum heart rate that is considered valid.
+// dcThreshold: This is the threshold for the DC level after filtering.
+// alsFactor: This is the factor that is used to convert the ambient light value to a threshold for the heart rate.
+// dataHRS: This is the array that is used to store the raw PPG data.
+// vReal: This is the array that is used to store the real part of the FFT of the PPG data.
+// vImag: This is the array that is used to store the imaginary part of the FFT of the PPG data.
+// spectrum: This is the array that is used to store the power spectrum of the PPG data.
+// dataAverage: This is the array that is used to store the average heart rate.
+// avgIndex: This is the index of the current element in the dataAverage array.
+// lastPeakLocation: This is the last peak location that was found in the spectrum.
+// alsThreshold: This is the threshold for the ambient light level.
+// resetSpectralAvg: This is a flag that indicates whether the spectral averaging should be reset.
 namespace Pinetime {
   namespace Controllers {
     class Ppg {
     public:
       Ppg();
       int8_t Preprocess(uint32_t hrs, uint32_t als);
+      uint16_t GetMostRecentPpgData() const;
+
       int HeartRate();
       void Reset(bool resetDaqBuffer);
       static constexpr int deltaTms = 100;

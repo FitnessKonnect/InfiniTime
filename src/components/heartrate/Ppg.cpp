@@ -294,3 +294,11 @@ float Ppg::HeartRateAverage(float hr) {
 const std::array<uint16_t, Ppg::dataLength>& Ppg::GetPpgData() const {
   return dataHRS;
 }
+
+uint16_t Ppg::GetMostRecentPpgData() const {
+  if (dataIndex > 0) {
+    return dataHRS[dataIndex - 1]; 
+  }
+  // Return some default value (e.g., zero) if there is no data
+  return 0;
+}

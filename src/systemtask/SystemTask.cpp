@@ -178,6 +178,11 @@ void SystemTask::Work() {
   measureBatteryTimer = xTimerCreate("measureBattery", batteryMeasurementPeriod, pdTRUE, this, MeasureBatteryTimerCallback);
   xTimerStart(measureBatteryTimer, portMAX_DELAY);
 
+  heartRateSensor.Enable();
+  // ppg.Reset(true);
+  heartRateApp.ReadAndPrintPpgData(7, 55, motionSensor);
+
+  vTaskDelay(100);
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
   while (true) {
@@ -237,7 +242,7 @@ void SystemTask::Work() {
           state = SystemTaskState::GoingToSleep; // Already set in PushMessage()
           NRF_LOG_INFO("[systemtask] Going to sleep");
           displayApp.PushMessage(Pinetime::Applications::Display::Messages::GoToSleep);
-          heartRateApp.PushMessage(Pinetime::Applications::HeartRateTask::Messages::GoToSleep);
+          // heartRateApp.PushMessage(Pinetime::Applications::HeartRateTask::Messages::GoToSleep);
           break;
         case Messages::OnNewTime:
           displayApp.PushMessage(Pinetime::Applications::Display::Messages::RestoreBrightness);
@@ -435,6 +440,8 @@ void SystemTask::UpdateMotion() {
 
   auto motionValues = motionSensor.Process();
 
+  // SEGGER_RTT_printf(0, " X: %d, Y: %d, Z: %d\n", motionValues.x, motionValues.y, motionValues.z);
+
   motionController.IsSensorOk(motionSensor.IsOk());
   motionController.Update(motionValues.x, motionValues.y, motionValues.z, motionValues.steps);
 
@@ -449,7 +456,7 @@ void SystemTask::UpdateMotion() {
 }
 
 void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
-  heartRateApp.ReadAndPrintPpgData(1);
+  // heartRateApp.ReadAndPrintPpgData(5, 5, motionSensor, motionController);
 
   if (IsSleeping()) {
     return;

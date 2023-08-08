@@ -207,40 +207,32 @@ int HeartRateTask::CurrentTaskDelay() {
   }
 }
 
-void HeartRateTask::ReadAndPrintPpgData(int seconds) {
-  // Start the PPG sensor
-  heartRateSensor.Enable();
-  ppg.Reset(true);
-  vTaskDelay(100);
+;
 
-  // Calculate the number of iterations based on the provided seconds and the defined delay time
-  int iterations = seconds * 1000 / ppg.deltaTms;
+void HeartRateTask::ReadAndPrintPpgData(int seconds, int delayInSeconds, Pinetime::Drivers::Bma421& motionSensor) {
+  // Convert seconds and delayInSeconds to ticks as vTaskDelay function uses ticks for delay
+  // Assuming tick rate is 1000 Hz, so 1 tick = 1 ms
+  TickType_t secondsInTicks = seconds * 1000;
 
-  SEGGER_RTT_printf(0, "Iterations: %u\n", iterations);
+  while (true) {
+    heartRateSensor.Enable();
+    vTaskDelay(100);
 
-  for (int i = 0; i < iterations; ++i) {
-    // Preprocess and get the raw data from the sensor
-    ppg.Preprocess(heartRateSensor.ReadHrs(), heartRateSensor.ReadAls());
+    TickType_t startTick = xTaskGetTickCount();
 
-    // Get PPG data
-    const std::array<uint16_t, Pinetime::Controllers::Ppg::dataLength>& ppgData = ppg.GetPpgData();
+    SEGGER_RTT_printf(0, "startTick: %u\n", startTick);
+    while ((xTaskGetTickCount() - startTick) < secondsInTicks) { // Loop for 'seconds' duration
 
-    // Print the length of the PPG data
-    SEGGER_RTT_printf(0, "Length of PPG Data: %u\n", ppgData.size());
+      // Print the length of the PPG data
+      SEGGER_RTT_printf(0, "current hr: %u\n", heartRateSensor.ReadHrs());
+      SEGGER_RTT_printf(0, "current ambient light: %u\n", heartRateSensor.ReadAls());
 
-    // Print the buffer using SEGGER_RTT
-    SEGGER_RTT_printf(0, "PPG Data: ");
-    for (const auto& data : ppgData) {
-      SEGGER_RTT_printf(0, "%u, ", data);
+      auto motionValues = motionSensor.Process();
+      SEGGER_RTT_printf(0, " X: %d, Y: %d, Z: %d\n", motionValues.x, motionValues.y, motionValues.z);
+
     }
-    SEGGER_RTT_printf(0, "\n");
 
-    // Delay for deltaTms milliseconds
-    vTaskDelay(ppg.deltaTms);
+    heartRateSensor.Disable();
+    vTaskDelay(delayInSeconds * 1000);
   }
-
-  // Stop the PPG sensor
-  heartRateSensor.Disable();
-  ppg.Reset(true);
-  vTaskDelay(100);
 }

@@ -94,6 +94,7 @@ Pinetime::Controllers::Ble bleController;
 
 Pinetime::Controllers::HeartRateController heartRateController;
 Pinetime::Applications::HeartRateTask heartRateApp(heartRateSensor, heartRateController);
+Pinetime::Applications::FkPpgTask fkPpgTask(heartRateSensor, motionSensor);
 
 Pinetime::Controllers::FS fs {spiNorFlash};
 Pinetime::Controllers::Settings settingsController {fs};
@@ -144,6 +145,7 @@ Pinetime::System::SystemTask systemTask(spi,
                                         heartRateController,
                                         displayApp,
                                         heartRateApp,
+										fkPpgTask,
                                         fs,
                                         touchHandler,
                                         buttonHandler);

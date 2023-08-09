@@ -7,6 +7,7 @@
 #include <task.h>
 #include <timers.h>
 #include <heartratetask/HeartRateTask.h>
+#include <heartratetask/FkPpgTask.cpp>
 #include <components/settings/Settings.h>
 #include <drivers/Bma421.h>
 #include <drivers/PinMap.h>
@@ -72,6 +73,7 @@ namespace Pinetime {
                  Pinetime::Controllers::HeartRateController& heartRateController,
                  Pinetime::Applications::DisplayApp& displayApp,
                  Pinetime::Applications::HeartRateTask& heartRateApp,
+				 Pinetime::Applications::FkPpgTask& fkPpgTask,
                  Pinetime::Controllers::FS& fs,
                  Pinetime::Controllers::TouchHandler& touchHandler,
                  Pinetime::Controllers::ButtonHandler& buttonHandler);
@@ -120,7 +122,8 @@ namespace Pinetime {
 
       Pinetime::Applications::DisplayApp& displayApp;
       Pinetime::Applications::HeartRateTask& heartRateApp;
-      Pinetime::Controllers::FS& fs;
+      Pinetime::Applications::FkPpgTask& fkPpgTask;
+	  Pinetime::Controllers::FS& fs;
       Pinetime::Controllers::TouchHandler& touchHandler;
       Pinetime::Controllers::ButtonHandler& buttonHandler;
       Pinetime::Controllers::NimbleController nimbleController;

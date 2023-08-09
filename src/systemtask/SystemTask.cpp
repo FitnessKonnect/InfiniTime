@@ -50,6 +50,7 @@ SystemTask::SystemTask(Drivers::SpiMaster& spi,
                        Pinetime::Controllers::HeartRateController& heartRateController,
                        Pinetime::Applications::DisplayApp& displayApp,
                        Pinetime::Applications::HeartRateTask& heartRateApp,
+                       Pinetime::Applications::FkPpgTask& fkPpgTask,
                        Pinetime::Controllers::FS& fs,
                        Pinetime::Controllers::TouchHandler& touchHandler,
                        Pinetime::Controllers::ButtonHandler& buttonHandler)
@@ -71,6 +72,7 @@ SystemTask::SystemTask(Drivers::SpiMaster& spi,
     motionController {motionController},
     displayApp {displayApp},
     heartRateApp(heartRateApp),
+    fkPpgTask {fkPpgTask},
     fs {fs},
     touchHandler {touchHandler},
     buttonHandler {buttonHandler},
@@ -144,6 +146,7 @@ void SystemTask::Work() {
   heartRateSensor.Init();
   heartRateSensor.Disable();
   heartRateApp.Start();
+  fkPpgTask.Start();
 
   buttonHandler.Init(this);
 
@@ -178,9 +181,9 @@ void SystemTask::Work() {
   measureBatteryTimer = xTimerCreate("measureBattery", batteryMeasurementPeriod, pdTRUE, this, MeasureBatteryTimerCallback);
   xTimerStart(measureBatteryTimer, portMAX_DELAY);
 
-  heartRateSensor.Enable();
+//   heartRateSensor.Enable();
   // ppg.Reset(true);
-  heartRateApp.ReadAndPrintPpgData(7, 55, motionSensor);
+//   heartRateApp.ReadAndPrintPpgData(7, 55, motionSensor);
 
   vTaskDelay(100);
 #pragma clang diagnostic push
@@ -456,7 +459,6 @@ void SystemTask::UpdateMotion() {
 }
 
 void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
-  // heartRateApp.ReadAndPrintPpgData(5, 5, motionSensor, motionController);
 
   if (IsSleeping()) {
     return;
@@ -475,6 +477,7 @@ void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
       break;
     case Actions::DoubleClick:
       displayApp.PushMessage(Applications::Display::Messages::ButtonDoubleClicked);
+      fkPpgTask.PushMessage(Pinetime::Applications::FkPpgTask::Messages::Toggle);
       break;
     case Actions::LongPress:
       displayApp.PushMessage(Applications::Display::Messages::ButtonLongPressed);

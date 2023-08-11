@@ -7,7 +7,7 @@
 #include <task.h>
 #include <timers.h>
 #include <heartratetask/HeartRateTask.h>
-#include <heartratetask/FkPpgTask.cpp>
+#include <heartratetask/FkPpgTask.h>
 #include <components/settings/Settings.h>
 #include <drivers/Bma421.h>
 #include <drivers/PinMap.h>

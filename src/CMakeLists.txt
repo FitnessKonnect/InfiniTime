@@ -488,6 +488,7 @@ list(APPEND SOURCE_FILES
         drivers/TwiMaster.cpp
 
         heartratetask/HeartRateTask.cpp
+        heartratetask/FkPpgTask.cpp
         components/heartrate/Ppg.cpp
         components/heartrate/Biquad.cpp
         components/heartrate/Ptagc.cpp
@@ -551,6 +552,7 @@ list(APPEND RECOVERY_SOURCE_FILES
         components/rle/RleDecoder.cpp
         components/heartrate/HeartRateController.cpp
         heartratetask/HeartRateTask.cpp
+        heartratetask/FkPpgTask.cpp
         components/heartrate/Ppg.cpp
         components/heartrate/Biquad.cpp
         components/heartrate/Ptagc.cpp
@@ -665,6 +667,7 @@ set(INCLUDE_FILES
         displayapp/screens/Symbols.h
         drivers/TwiMaster.h
         heartratetask/HeartRateTask.h
+        heartratetask/FkPpgTask.h
         components/heartrate/Ppg.h
         components/heartrate/Biquad.h
         components/heartrate/Ptagc.h

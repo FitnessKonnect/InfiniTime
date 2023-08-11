@@ -16,6 +16,7 @@
 #include "drivers/PinMap.h"
 #include "main.h"
 #include "BootErrors.h"
+#include "heartratetask/FkPpgTask.h"
 
 #include <memory>
 
@@ -72,7 +73,7 @@ SystemTask::SystemTask(Drivers::SpiMaster& spi,
     motionController {motionController},
     displayApp {displayApp},
     heartRateApp(heartRateApp),
-    fkPpgTask {fkPpgTask},
+    fkPpgTask (fkPpgTask),
     fs {fs},
     touchHandler {touchHandler},
     buttonHandler {buttonHandler},
@@ -146,7 +147,7 @@ void SystemTask::Work() {
   heartRateSensor.Init();
   heartRateSensor.Disable();
   heartRateApp.Start();
-  fkPpgTask.Start();
+  fkPpgTask.StartFK();
 
   buttonHandler.Init(this);
 
@@ -477,7 +478,7 @@ void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
       break;
     case Actions::DoubleClick:
       displayApp.PushMessage(Applications::Display::Messages::ButtonDoubleClicked);
-      fkPpgTask.PushMessage(Pinetime::Applications::FkPpgTask::Messages::Toggle);
+      fkPpgTask.PushMessageFK(Pinetime::Applications::FkPpgTask::Messages::Toggle);
       break;
     case Actions::LongPress:
       displayApp.PushMessage(Applications::Display::Messages::ButtonLongPressed);

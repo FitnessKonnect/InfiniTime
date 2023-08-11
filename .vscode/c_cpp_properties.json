@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/src/**",
                 "${workspaceFolder}/src",
-                "${workspaceFolder}/../FreeRTOS-Kernel/include"
+                "${workspaceFolder}/../FreeRTOS-Kernel/include",
+                "X:/Program/win/nRF5_SDK/**"
             ],
             "defines": [],
             "compilerPath": "/opt/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-gcc",

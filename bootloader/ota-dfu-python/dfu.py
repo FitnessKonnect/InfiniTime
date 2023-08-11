@@ -107,7 +107,7 @@ def main():
             unpacker = Unpacker()
             #print options.zipfile
             try:
-                hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
+                hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)
             except Exception as e:
                 print("ERR")
                 print(e)

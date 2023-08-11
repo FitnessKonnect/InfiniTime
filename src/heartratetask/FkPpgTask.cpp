@@ -10,11 +10,21 @@ using namespace Pinetime::Applications;
 #define MEASUREMENT_DURATION 5 * 1000
 #define MEASUREMENT_DELAY    5
 
-FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma421& motionSensor) 
+FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma421& motionSensor)
   : heartRateSensor(heartRateSensor), motionSensor(motionSensor) {
 
   this->waitTimer = xTimerCreate("PPG-Wait", pdMS_TO_TICKS(CYCLE_DURATION), pdTRUE, this, FkPpgTask::StartMeasurementFK);
   this->measurementTimer = xTimerCreate("PPG-Measurement", pdMS_TO_TICKS(MEASUREMENT_DURATION), pdFALSE, this, FkPpgTask::StopMeasurementFK);
+
+  if(!this->waitTimer) {
+	SEGGER_RTT_printf(0, "failed to create wait timers\r\n");
+	APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  }
+
+  if(!this->measurementTimer) {
+	SEGGER_RTT_printf(0, "failed to create measurement timers\r\n");
+	APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  }
 }
 
 int FkPpgTask::CurrentTaskDelayFK() {
@@ -49,7 +59,7 @@ void FkPpgTask::ProcessFK(void* instance) {
 
 void FkPpgTask::WorkFK() {
   while (true) {
-    auto delay = CurrentTaskDelayFK();
+    auto delay = 100;
     Messages msg;
     auto result = xQueueReceive(messageQueue, &msg, delay);
 

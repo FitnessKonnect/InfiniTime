@@ -15,6 +15,7 @@ void HeartRateTask::Start() {
   controller.SetHeartRateTask(this);
 
   if (pdPASS != xTaskCreate(HeartRateTask::Process, "Heartrate", 500, this, 0, &taskHandle)) {
+	SEGGER_RTT_printf(0, "HRT: Failed to create task\r\n");
     APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
   }
 }

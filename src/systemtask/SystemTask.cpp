@@ -29,6 +29,7 @@ namespace {
 }
 
 void MeasureBatteryTimerCallback(TimerHandle_t xTimer) {
+  SEGGER_RTT_printf(0, "\n\nMeasureBatteryTimerCallback\r\n");
   auto* sysTask = static_cast<SystemTask*>(pvTimerGetTimerID(xTimer));
   sysTask->PushMessage(Pinetime::System::Messages::MeasureBatteryTimerExpired);
 }
@@ -146,7 +147,7 @@ void SystemTask::Work() {
 
   heartRateSensor.Init();
   heartRateSensor.Disable();
-  fkPpgTask.StartFK();
+  // fkPpgTask.StartFK();
   heartRateApp.Start();
 
   buttonHandler.Init(this);

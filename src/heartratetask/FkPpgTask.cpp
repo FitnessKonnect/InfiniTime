@@ -6,24 +6,19 @@
 
 using namespace Pinetime::Applications;
 
-#define CYCLE_DURATION       60 * 1000
-#define MEASUREMENT_DURATION 5 * 1000
-#define MEASUREMENT_DELAY    5
-
 FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma421& motionSensor)
   : heartRateSensor(heartRateSensor), motionSensor(motionSensor) {
 
   this->waitTimer = xTimerCreate("PPG-Wait", pdMS_TO_TICKS(CYCLE_DURATION), pdTRUE, this, FkPpgTask::StartMeasurementFK);
   this->measurementTimer = xTimerCreate("PPG-Measurement", pdMS_TO_TICKS(MEASUREMENT_DURATION), pdFALSE, this, FkPpgTask::StopMeasurementFK);
 
-  if(!this->waitTimer) {
-	SEGGER_RTT_printf(0, "failed to create wait timers\r\n");
-	APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  if (this->waitTimer != NULL) {
+    SEGGER_RTT_printf(0, "waitTimer was created successfully.\r\n");
   }
 
-  if(!this->measurementTimer) {
-	SEGGER_RTT_printf(0, "failed to create measurement timers\r\n");
-	APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  if (!this->measurementTimer) {
+    SEGGER_RTT_printf(0, "failed to create measurement timers\r\n");
+    APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
   }
 }
 
@@ -41,13 +36,13 @@ int FkPpgTask::CurrentTaskDelayFK() {
 }
 
 void FkPpgTask::StartFK() {
-  SEGGER_RTT_printf(0, "starting ppg task\r\n");
-  this->messageQueue = xQueueCreate(10, 1);
-  if (pdPASS != xTaskCreate(FkPpgTask::ProcessFK, "FkPPG", 500, this, 0, &taskHandle)) {
-    SEGGER_RTT_printf(0, "failed to create ppg task\r\n");
-    APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
-    return;
-  }
+  // SEGGER_RTT_printf(0, "starting ppg task\r\n");
+  // this->messageQueue = xQueueCreate(10, 1);
+  // if (pdPASS != xTaskCreate(FkPpgTask::ProcessFK, "FkPPG", 400, this, 0, &taskHandle)) {
+  //   SEGGER_RTT_printf(0, "failed to create ppg task\r\n");
+  //   APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  //   return;
+  // }
   SEGGER_RTT_printf(0, "created ppg task\r\n");
   this->EnableMeasurementFK();
 }
@@ -92,7 +87,11 @@ void FkPpgTask::EnableMeasurementFK() {
   SEGGER_RTT_printf(0, "enabling measurement\r\n");
   this->measure = true;
   this->state = States::Running;
-  xTimerStart(this->waitTimer, 0);
+
+  BaseType_t startResult = xTimerStart(this->waitTimer, 0);
+  if (startResult != pdPASS) {
+    SEGGER_RTT_printf(0, "Failed to start waitTimer with error code: %d\r\n", startResult);
+  }
 }
 
 void FkPpgTask::DisableMeasurementFK() {
@@ -100,11 +99,12 @@ void FkPpgTask::DisableMeasurementFK() {
   this->heartRateSensor.Disable();
   this->measure = false;
   this->state = States::Stopped;
-  xTimerStop(this->waitTimer, 0);
-  xTimerStop(this->measurementTimer, 0);
+  xTimerStop(this->waitTimer, portMAX_DELAY);
+  xTimerStop(this->measurementTimer, portMAX_DELAY);
 }
 
 void FkPpgTask::StartMeasurementFK(TimerHandle_t xTimer) {
+  SEGGER_RTT_printf(0, "starting measurement timer\r\n");
   auto* instance = static_cast<FkPpgTask*>(pvTimerGetTimerID(xTimer));
   instance->state = States::Measuring;
   instance->measure = true;
@@ -124,7 +124,7 @@ void FkPpgTask::StartMeasurementFK(TimerHandle_t xTimer) {
 
     SEGGER_RTT_printf(0, "current hr, als, motion(xyz): %u, %u, %u, %u, %u\r\n", hrs, als, motionValues.x, motionValues.y, motionValues.z);
 
-    vTaskDelay(5);
+    // vTaskDelay(5);
   }
 }
 

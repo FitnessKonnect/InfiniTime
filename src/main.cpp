@@ -146,7 +146,7 @@ Pinetime::System::SystemTask systemTask(spi,
                                         heartRateController,
                                         displayApp,
                                         heartRateApp,
-										fkPpgTask,
+										                    fkPpgTask,
                                         fs,
                                         touchHandler,
                                         buttonHandler);
@@ -316,7 +316,6 @@ int main() {
 #if (CLOCK_CONFIG_LF_SRC == NRF_CLOCK_LFCLK_RC)
   nrf_drv_clock_calibration_start(0, calibrate_lf_clock_rc);
 #endif
-
   // Unblock i2c?
   nrf_gpio_cfg(Pinetime::PinMap::TwiScl,
                NRF_GPIO_PIN_DIR_OUTPUT,
@@ -334,6 +333,7 @@ int main() {
   debounceTimer = xTimerCreate("debounceTimer", 10, pdFALSE, nullptr, DebounceTimerCallback);
   debounceChargeTimer = xTimerCreate("debounceTimerCharge", 200, pdFALSE, nullptr, DebounceTimerChargeCallback);
 
+  
   // retrieve version stored by bootloader
   Pinetime::BootloaderVersion::SetVersion(NRF_TIMER2->CC[0]);
 
@@ -349,7 +349,13 @@ int main() {
 
   nimble_port_init();
 
+  SEGGER_RTT_printf(0, "Initializing FKPPG task in main...\n");
+  fkPpgTask.StartFK();
+  
+  SEGGER_RTT_printf(0, "Starting FreeRTOS scheduler...\n");
   vTaskStartScheduler();
+
+  SEGGER_RTT_printf(0, "If you see this, the scheduler failed to start!\n");
 
   for (;;) {
     APP_ERROR_HANDLER(NRF_ERROR_FORBIDDEN);

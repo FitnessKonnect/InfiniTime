@@ -26,7 +26,6 @@ void HeartRateTask::Process(void* instance) {
 }
 
 void HeartRateTask::Work() {
-  int lastBpm = 0;
   while (true) {
     Messages msg;
     uint32_t delay;
@@ -49,7 +48,6 @@ void HeartRateTask::Work() {
         case Messages::WakeUp:
           state = States::Running;
           if (measurementStarted) {
-            lastBpm = 0;
             StartMeasurement();
           }
           break;
@@ -57,7 +55,6 @@ void HeartRateTask::Work() {
           if (measurementStarted) {
             break;
           }
-          lastBpm = 0;
           StartMeasurement();
           measurementStarted = true;
           break;
@@ -72,35 +69,10 @@ void HeartRateTask::Work() {
     }
 
     if (measurementStarted) {
-      int8_t ambient = ppg.Preprocess(heartRateSensor.ReadHrs(), heartRateSensor.ReadAls());
-      int bpm = ppg.HeartRate();
+      auto hrs = heartRateSensor.ReadHrs();
+      auto als = heartRateSensor.ReadAls();
 
-      // If ambient light detected or a reset requested (bpm < 0)
-      if (ambient > 0) {
-        // Reset all DAQ buffers
-        ppg.Reset(true);
-        // Force state to NotEnoughData (below)
-        lastBpm = 0;
-        bpm = 0;
-      } else if (bpm < 0) {
-        // Reset all DAQ buffers except HRS buffer
-        ppg.Reset(false);
-        // Set HR to zero and update
-        bpm = 0;
-        controller.Update(Controllers::HeartRateController::States::Running, bpm);
-		SEGGER_RTT_printf(0, "HRT: Running, Resetting DAQ buffers\r\n");
-      }
-
-      if (lastBpm == 0 && bpm == 0) {
-        controller.Update(Controllers::HeartRateController::States::NotEnoughData, bpm);
-		SEGGER_RTT_printf(0, "HRT: NotEnoughData\r\n");
-      }
-
-      if (bpm != 0) {
-        lastBpm = bpm;
-        controller.Update(Controllers::HeartRateController::States::Running, lastBpm);
-		SEGGER_RTT_printf(0, "HRT: Running, bpm: %d\r\n", lastBpm);
-      }
+      SEGGER_RTT_printf(0, "current hr, als: %u, %u\r\n", hrs, als);
     }
   }
 }

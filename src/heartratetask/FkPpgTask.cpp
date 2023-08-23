@@ -10,7 +10,8 @@ FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma42
   : heartRateSensor(heartRateSensor), motionSensor(motionSensor) {
 
   this->waitTimer = xTimerCreate("PPG-Wait", pdMS_TO_TICKS(CYCLE_DURATION), pdTRUE, this, FkPpgTask::StartMeasurementFK);
-  this->measurementTimer = xTimerCreate("PPG-Measurement", pdMS_TO_TICKS(MEASUREMENT_DURATION), pdFALSE, this, FkPpgTask::StopMeasurementFK);
+  this->measurementTimer =
+    xTimerCreate("PPG-Measurement", pdMS_TO_TICKS(MEASUREMENT_DURATION), pdFALSE, this, FkPpgTask::StopMeasurementFK);
 
   if (this->waitTimer != NULL) {
     SEGGER_RTT_printf(0, "waitTimer was created successfully.\r\n");
@@ -22,65 +23,10 @@ FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma42
   }
 }
 
-int FkPpgTask::CurrentTaskDelayFK() {
-  switch (state) {
-    case States::Measuring:
-      return ppg.deltaTms;
-    case States::Running:
-      return MEASUREMENT_DURATION;
-    case States::Waiting:
-      return CYCLE_DURATION;
-    default:
-      return portMAX_DELAY;
-  }
-}
-
-void FkPpgTask::StartFK() {
-  // SEGGER_RTT_printf(0, "starting ppg task\r\n");
-  // this->messageQueue = xQueueCreate(10, 1);
-  // if (pdPASS != xTaskCreate(FkPpgTask::ProcessFK, "FkPPG", 400, this, 0, &taskHandle)) {
-  //   SEGGER_RTT_printf(0, "failed to create ppg task\r\n");
-  //   APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
-  //   return;
-  // }
-  SEGGER_RTT_printf(0, "created ppg task\r\n");
+void FkPpgTask::StartFK(HeartRateTask& heartRateTaskRef) {
+  SEGGER_RTT_printf(0, "starting ppg task\r\n");
+  this->heartRateTask = &heartRateTaskRef;
   this->EnableMeasurementFK();
-}
-
-void FkPpgTask::ProcessFK(void* instance) {
-  auto* app = static_cast<FkPpgTask*>(instance);
-  app->WorkFK();
-}
-
-void FkPpgTask::WorkFK() {
-  while (true) {
-    auto delay = 100;
-    Messages msg;
-    auto result = xQueueReceive(messageQueue, &msg, delay);
-
-    SEGGER_RTT_printf(0, "received message: %u\r\n", msg);
-    if (result == pdTRUE) {
-      switch (msg) {
-        case Messages::EnableMeasurement:
-          SEGGER_RTT_printf(0, "msg=enable measurement\r\n");
-          EnableMeasurementFK();
-          break;
-        case Messages::DisableMeasurement:
-          SEGGER_RTT_printf(0, "msg=disable measurement\r\n");
-          DisableMeasurementFK();
-          break;
-        case Messages::Toggle:
-          if (this->state == States::Stopped) {
-            EnableMeasurementFK();
-          } else {
-            DisableMeasurementFK();
-          }
-          break;
-        default:
-          break;
-      }
-    }
-  }
 }
 
 void FkPpgTask::EnableMeasurementFK() {
@@ -106,43 +52,36 @@ void FkPpgTask::DisableMeasurementFK() {
 void FkPpgTask::StartMeasurementFK(TimerHandle_t xTimer) {
   SEGGER_RTT_printf(0, "starting measurement timer\r\n");
   auto* instance = static_cast<FkPpgTask*>(pvTimerGetTimerID(xTimer));
+  if (!instance->heartRateTask) {
+    SEGGER_RTT_printf(0, "StartMeasurementFK: heartRateTask is null\r\n");
+    xTimerStop(instance->waitTimer, 0);
+    return;
+  }
+
   instance->state = States::Measuring;
   instance->measure = true;
-  xTimerStart(instance->measurementTimer, 0);
-
-  instance->heartRateSensor.Enable();
-  vTaskDelay(100);
-
-  SEGGER_RTT_printf(0, "starting measurement\r\n");
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
-  while (instance->measure) {
-    auto hrs = instance->heartRateSensor.ReadHrs();
-    auto als = instance->heartRateSensor.ReadAls();
-    auto motionValues = instance->motionSensor.Process();
-
-    SEGGER_RTT_printf(0, "current hr, als, motion(xyz): %u, %u, %u, %u, %u\r\n", hrs, als, motionValues.x, motionValues.y, motionValues.z);
-
-    // vTaskDelay(5);
+  BaseType_t startResult = xTimerStart(instance->measurementTimer, 0);
+  if (startResult != pdPASS) {
+    SEGGER_RTT_printf(0, "Failed to start measurementTimer with error code: %d\r\n", startResult);
   }
+
+  vTaskDelay(100);
+  SEGGER_RTT_printf(0, "starting measurement\r\n");
+  instance->heartRateTask->PushMessage(Pinetime::Applications::HeartRateTask::Messages::StartMeasurement);
 }
 
 void FkPpgTask::StopMeasurementFK(TimerHandle_t xTimer) {
-  auto* instance = static_cast<FkPpgTask*>(pvTimerGetTimerID(xTimer));
   SEGGER_RTT_printf(0, "stopping measurement\r\n");
-  instance->heartRateSensor.Disable();
+  auto* instance = static_cast<FkPpgTask*>(pvTimerGetTimerID(xTimer));
+  if (!instance->heartRateTask) {
+    SEGGER_RTT_printf(0, "StopMeasurementFK: heartRateTask is null\r\n");
+    return;
+  }
   instance->measure = false;
   instance->state = States::Waiting;
   xTimerStop(instance->measurementTimer, 0);
+  SEGGER_RTT_printf(0, "stopped measurement\r\n");
+  instance->heartRateTask->PushMessage(Pinetime::Applications::HeartRateTask::Messages::StopMeasurement);
 }
 
-void FkPpgTask::PushMessageFK(FkPpgTask::Messages msg) {
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xQueueSendFromISR(messageQueue, &msg, &xHigherPriorityTaskWoken);
-  if (xHigherPriorityTaskWoken) {
-    /* Actual macro used here is port specific. */
-    // TODO : should I do something here?
-  }
-}
 #endif //__FKPPGTASK_CPP__

@@ -3,10 +3,6 @@
 #include <task.h>
 #include <queue.h>
 #include <components/heartrate/Ppg.h>
-#include "drivers/Bma421.h"
-
-#define DURATION_BETWEEN_BACKGROUND_MEASUREMENTS        5 * 60 * 1000 // 5 minutes assuming 1 Hz
-#define DURATION_UNTIL_BACKGROUND_MEASURMENT_IS_STOPPED 30 * 1000     // 30 seconds assuming 1 Hz
 
 namespace Pinetime {
   namespace Drivers {
@@ -21,23 +17,17 @@ namespace Pinetime {
     class HeartRateTask {
     public:
       enum class Messages : uint8_t { GoToSleep, WakeUp, StartMeasurement, StopMeasurement };
-      enum class States { Idle, Running, Measuring, BackgroundWaiting, BackgroundMeasuring };
+      enum class States { Idle, Running };
 
       explicit HeartRateTask(Drivers::Hrs3300& heartRateSensor, Controllers::HeartRateController& controller);
       void Start();
       void Work();
       void PushMessage(Messages msg);
 
-      void ReadAndPrintPpgData(int seconds, int delayInSeconds, Pinetime::Drivers::Bma421& motionSensor);
     private:
       static void Process(void* instance);
       void StartMeasurement();
       void StopMeasurement();
-      void StartWaiting();
-
-      void HandleBackgroundWaiting();
-      void HandleSensorData(int* lastBpm);
-      int CurrentTaskDelay();
 
       TaskHandle_t taskHandle;
       QueueHandle_t messageQueue;
@@ -45,8 +35,7 @@ namespace Pinetime {
       Drivers::Hrs3300& heartRateSensor;
       Controllers::HeartRateController& controller;
       Controllers::Ppg ppg;
-      TickType_t backgroundWaitingStart = 0;
-      TickType_t measurementStart = 0;
+      bool measurementStarted = false;
     };
 
   }

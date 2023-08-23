@@ -15,7 +15,7 @@ void HeartRateTask::Start() {
   controller.SetHeartRateTask(this);
 
   if (pdPASS != xTaskCreate(HeartRateTask::Process, "Heartrate", 500, this, 0, &taskHandle)) {
-	SEGGER_RTT_printf(0, "HRT: Failed to create task\r\n");
+    SEGGER_RTT_printf(0, "Failed to create HeartRateTask\r\n");
     APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
   }
 }
@@ -27,101 +27,80 @@ void HeartRateTask::Process(void* instance) {
 
 void HeartRateTask::Work() {
   int lastBpm = 0;
-
   while (true) {
-    auto delay = CurrentTaskDelay();
     Messages msg;
+    uint32_t delay;
+    if (state == States::Running) {
+      if (measurementStarted) {
+        delay = ppg.deltaTms;
+      } else {
+        delay = 100;
+      }
+    } else {
+      delay = portMAX_DELAY;
+    }
 
-    auto result = xQueueReceive(messageQueue, &msg, delay);
-    const char* msgStr = "";
-    switch (msg) {
-      case Messages::GoToSleep:
-        msgStr = "GoToSleep";
-        break;
-      case Messages::WakeUp:
-        msgStr = "WakeUp";
-        break;
-      case Messages::StartMeasurement:
-        msgStr = "StartMeasurement";
-        break;
-      case Messages::StopMeasurement:
-        msgStr = "StopMeasurement";
-        break;
-    }
-    const char* stateStr = "";
-    switch (state) {
-      case States::Idle:
-        stateStr = "Idle";
-        break;
-      case States::Running:
-        stateStr = "Running";
-        break;
-      case States::Measuring:
-        stateStr = "Measuring";
-        break;
-      case States::BackgroundMeasuring:
-        stateStr = "BackgroundMeasuring";
-        break;
-      case States::BackgroundWaiting:
-        stateStr = "BackgroundWaiting";
-        break;
-    }
-    if (result == pdTRUE) {
-      SEGGER_RTT_printf(0, "HRT message = %s, result = %s\r\n", msgStr, result == pdTRUE ? "pdTRUE" : "pdFALSE");
+    if (xQueueReceive(messageQueue, &msg, delay)) {
       switch (msg) {
         case Messages::GoToSleep:
-          SEGGER_RTT_printf(0, "Goodnight ... %s\r\n", stateStr);
-          if (state == States::Running) {
-            state = States::Idle;
-          } else if (state == States::Measuring) {
-            state = States::BackgroundWaiting;
-            StartWaiting();
-          }
           StopMeasurement();
+          state = States::Idle;
           break;
         case Messages::WakeUp:
-          SEGGER_RTT_printf(0, "I am waking up to ash and dust .... %s\r\n", stateStr);
-          if (state == States::Idle) {
-            state = States::Running;
-            lastBpm = 0;
-            StartMeasurement();
-          } else if (state == States::BackgroundMeasuring) {
-            state = States::Measuring;
-          } else if (state == States::BackgroundWaiting) {
-            state = States::Measuring;
-            StartMeasurement();
-          } else if (state == States::Running) {
-            state = States::Measuring; // this fucked us as the sensor no longer starts ... the sensor was starting only when State=RUNNING
+          state = States::Running;
+          if (measurementStarted) {
             lastBpm = 0;
             StartMeasurement();
           }
           break;
         case Messages::StartMeasurement:
-          if (state == States::Measuring || state == States::BackgroundMeasuring) {
+          if (measurementStarted) {
             break;
           }
-          state = States::Measuring;
           lastBpm = 0;
           StartMeasurement();
+          measurementStarted = true;
           break;
         case Messages::StopMeasurement:
-          if (state == States::Running || state == States::Idle) {
+          if (!measurementStarted) {
             break;
           }
-          if (state == States::Measuring) {
-            state = States::Running;
-          } else if (state == States::BackgroundMeasuring) {
-            state = States::Idle;
-          }
           StopMeasurement();
+          measurementStarted = false;
           break;
       }
     }
 
-    if (state == States::BackgroundWaiting) {
-      HandleBackgroundWaiting();
-    } else if (state == States::BackgroundMeasuring || state == States::Measuring) {
-      HandleSensorData(&lastBpm);
+    if (measurementStarted) {
+      int8_t ambient = ppg.Preprocess(heartRateSensor.ReadHrs(), heartRateSensor.ReadAls());
+      int bpm = ppg.HeartRate();
+
+      // If ambient light detected or a reset requested (bpm < 0)
+      if (ambient > 0) {
+        // Reset all DAQ buffers
+        ppg.Reset(true);
+        // Force state to NotEnoughData (below)
+        lastBpm = 0;
+        bpm = 0;
+      } else if (bpm < 0) {
+        // Reset all DAQ buffers except HRS buffer
+        ppg.Reset(false);
+        // Set HR to zero and update
+        bpm = 0;
+        controller.Update(Controllers::HeartRateController::States::Running, bpm);
+		SEGGER_RTT_printf(0, "HRT: Running, Resetting DAQ buffers\r\n");
+      }
+
+      if (lastBpm == 0 && bpm == 0) {
+        controller.Update(Controllers::HeartRateController::States::NotEnoughData, bpm);
+		SEGGER_RTT_printf(0, "HRT: NotEnoughData\r\n");
+      }
+
+      if (bpm != 0) {
+        lastBpm = bpm;
+        controller.Update(Controllers::HeartRateController::States::Running, lastBpm);
+		SEGGER_RTT_printf(0, "HRT: Running, bpm: %d\r\n", lastBpm);
+      }
     }
   }
 }
@@ -139,101 +118,10 @@ void HeartRateTask::StartMeasurement() {
   heartRateSensor.Enable();
   ppg.Reset(true);
   vTaskDelay(100);
-  measurementStart = xTaskGetTickCount();
 }
 
 void HeartRateTask::StopMeasurement() {
   heartRateSensor.Disable();
   ppg.Reset(true);
   vTaskDelay(100);
-}
-
-void HeartRateTask::StartWaiting() {
-  StopMeasurement();
-  backgroundWaitingStart = xTaskGetTickCount();
-}
-
-void HeartRateTask::HandleBackgroundWaiting() {
-  if (xTaskGetTickCount() - backgroundWaitingStart >= DURATION_BETWEEN_BACKGROUND_MEASUREMENTS) {
-    state = States::BackgroundMeasuring;
-    StartMeasurement();
-  }
-}
-
-void HeartRateTask::HandleSensorData(int* lastBpm) {
-  int8_t ambient = ppg.Preprocess(heartRateSensor.ReadHrs(), heartRateSensor.ReadAls());
-  int bpm = ppg.HeartRate();
-
-  // If ambient light detected or a reset requested (bpm < 0)
-  if (ambient > 0) {
-    // Reset all DAQ buffers
-    ppg.Reset(true);
-  } else if (bpm < 0) {
-    // Reset all DAQ buffers except HRS buffer
-    ppg.Reset(false);
-    // Set HR to zero and update
-    bpm = 0;
-  }
-
-  if (*lastBpm == 0 && bpm == 0) {
-    controller.Update(Controllers::HeartRateController::States::NotEnoughData, bpm);
-  }
-
-  if (bpm != 0) {
-    *lastBpm = bpm;
-    controller.Update(Controllers::HeartRateController::States::Running, bpm);
-    if (state == States::BackgroundMeasuring) {
-      state = States::BackgroundWaiting;
-      StartWaiting();
-    }
-  }
-  if (bpm == 0 && state == States::BackgroundMeasuring &&
-      xTaskGetTickCount() - measurementStart >= DURATION_UNTIL_BACKGROUND_MEASURMENT_IS_STOPPED) {
-    state = States::BackgroundWaiting;
-    StartWaiting();
-  }
-}
-
-int HeartRateTask::CurrentTaskDelay() {
-  switch (state) {
-    case States::Measuring:
-    case States::BackgroundMeasuring:
-      return ppg.deltaTms;
-    case States::Running:
-      return 100;
-    case States::BackgroundWaiting:
-      return 10000;
-    default:
-      return portMAX_DELAY;
-  }
-}
-
-;
-
-void HeartRateTask::ReadAndPrintPpgData(int seconds, int delayInSeconds, Pinetime::Drivers::Bma421& motionSensor) {
-  // Convert seconds and delayInSeconds to ticks as vTaskDelay function uses ticks for delay
-  // Assuming tick rate is 1000 Hz, so 1 tick = 1 ms
-  TickType_t secondsInTicks = seconds * 1000;
-
-  while (true) {
-    heartRateSensor.Enable();
-    vTaskDelay(100);
-
-    TickType_t startTick = xTaskGetTickCount();
-
-    SEGGER_RTT_printf(0, "startTick: %u\n", startTick);
-    while ((xTaskGetTickCount() - startTick) < secondsInTicks) { // Loop for 'seconds' duration
-
-      // Print the length of the PPG data
-      SEGGER_RTT_printf(0, "current hr: %u\n", heartRateSensor.ReadHrs());
-      SEGGER_RTT_printf(0, "current ambient light: %u\n", heartRateSensor.ReadAls());
-
-      auto motionValues = motionSensor.Process();
-      SEGGER_RTT_printf(0, " X: %d, Y: %d, Z: %d\n", motionValues.x, motionValues.y, motionValues.z);
-
-    }
-
-    heartRateSensor.Disable();
-    vTaskDelay(delayInSeconds * 1000);
-  }
 }

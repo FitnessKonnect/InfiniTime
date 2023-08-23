@@ -333,7 +333,7 @@ int main() {
   debounceTimer = xTimerCreate("debounceTimer", 10, pdFALSE, nullptr, DebounceTimerCallback);
   debounceChargeTimer = xTimerCreate("debounceTimerCharge", 200, pdFALSE, nullptr, DebounceTimerChargeCallback);
 
-  
+
   // retrieve version stored by bootloader
   Pinetime::BootloaderVersion::SetVersion(NRF_TIMER2->CC[0]);
 
@@ -350,8 +350,8 @@ int main() {
   nimble_port_init();
 
   SEGGER_RTT_printf(0, "Initializing FKPPG task in main...\n");
-  fkPpgTask.StartFK();
-  
+  fkPpgTask.StartFK(heartRateApp);
+
   SEGGER_RTT_printf(0, "Starting FreeRTOS scheduler...\n");
   vTaskStartScheduler();
 

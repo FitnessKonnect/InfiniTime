@@ -147,7 +147,6 @@ void SystemTask::Work() {
 
   heartRateSensor.Init();
   heartRateSensor.Disable();
-  // fkPpgTask.StartFK();
   heartRateApp.Start();
 
   buttonHandler.Init(this);
@@ -473,7 +472,6 @@ void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
   switch (action) {
     case Actions::Click:
       // If the first action after fast wakeup is a click, it should be ignored.
-      fkPpgTask.PushMessageFK(Pinetime::Applications::FkPpgTask::Messages::Toggle);
       if (!fastWakeUpDone && state != SystemTaskState::GoingToSleep) {
         displayApp.PushMessage(Applications::Display::Messages::ButtonPushed);
       }

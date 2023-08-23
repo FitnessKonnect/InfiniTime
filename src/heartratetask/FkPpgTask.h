@@ -1,19 +1,19 @@
 #pragma once
 #ifndef __FKPPGTASK_H__
-#define __FKPPGTASK_H__
-#include <FreeRTOS.h>
-#include <task.h>
-#include <queue.h>
-#include <components/heartrate/Ppg.h>
-#include "drivers/Bma421.h"
-#include <drivers/Hrs3300.h>
+  #define __FKPPGTASK_H__
+  #include <FreeRTOS.h>
+  #include <task.h>
+  #include <queue.h>
+  #include <components/heartrate/Ppg.h>
+  #include "drivers/Bma421.h"
+  #include <drivers/Hrs3300.h>
+  #include "heartratetask/HeartRateTask.h"
 
+  #include <timers.h>
 
-#include <timers.h>
-
-#define CYCLE_DURATION       60 * 1000
-#define MEASUREMENT_DURATION 5 * 1000
-#define MEASUREMENT_DELAY    5
+  #define CYCLE_DURATION       15 * 1000
+  #define MEASUREMENT_DURATION 5 * 1000
+  #define MEASUREMENT_DELAY    5
 
 namespace Pinetime {
   namespace Drivers {
@@ -22,19 +22,21 @@ namespace Pinetime {
   }
 
   namespace Applications {
+    class HeartRateTask;
+
     class FkPpgTask {
     private:
       TaskHandle_t taskHandle;
       TimerHandle_t measurementTimer;
       TimerHandle_t waitTimer;
 
-      QueueHandle_t messageQueue;
       bool measure = false;
 
       Drivers::Hrs3300& heartRateSensor;
       Pinetime::Drivers::Bma421& motionSensor;
 
       Controllers::Ppg ppg;
+      HeartRateTask* heartRateTask;
 
     public:
       enum class Messages : uint8_t { EnableMeasurement, DisableMeasurement, Toggle };
@@ -43,13 +45,7 @@ namespace Pinetime {
 
       explicit FkPpgTask(Drivers::Hrs3300& heartRateSensor, Drivers::Bma421& motionSensor);
 
-      int CurrentTaskDelayFK();
-
-      void StartFK();
-
-      static void ProcessFK(void* instance);
-
-      void WorkFK();
+      void StartFK(HeartRateTask& heartRateTask);
 
       void EnableMeasurementFK();
 
@@ -58,8 +54,6 @@ namespace Pinetime {
       static void StartMeasurementFK(TimerHandle_t xTimer);
 
       static void StopMeasurementFK(TimerHandle_t xTimer);
-
-      void PushMessageFK(FkPpgTask::Messages msg);
     };
   }
 }

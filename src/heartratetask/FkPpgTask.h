@@ -21,6 +21,10 @@ namespace Pinetime {
     class Bma421;
   }
 
+  namespace Controllers {
+	class FS;
+  }
+
   namespace Applications {
     class HeartRateTask;
 
@@ -45,11 +49,13 @@ namespace Pinetime {
 
       explicit FkPpgTask(Drivers::Hrs3300& heartRateSensor, Drivers::Bma421& motionSensor);
 
-      void StartFK(HeartRateTask& heartRateTask);
+      void StartFK(HeartRateTask& heartRateTask, Pinetime::Controllers::FS& fs);
 
       void EnableMeasurementFK();
 
       void DisableMeasurementFK();
+
+	  void listMatchingFiles(Pinetime::Controllers::FS& fs);
 
       static void StartMeasurementFK(TimerHandle_t xTimer);
 

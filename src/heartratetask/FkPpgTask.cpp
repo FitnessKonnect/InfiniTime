@@ -3,6 +3,8 @@
 #include "heartratetask/FkPpgTask.h"
 #include <task.h>
 #include "SEGGER_RTT.h"
+#include <components/fs/FS.h>
+#include <cctype>
 
 using namespace Pinetime::Applications;
 
@@ -23,8 +25,9 @@ FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma42
   }
 }
 
-void FkPpgTask::StartFK(HeartRateTask& heartRateTaskRef) {
+void FkPpgTask::StartFK(HeartRateTask& heartRateTaskRef, Pinetime::Controllers::FS& fs) {
   SEGGER_RTT_printf(0, "starting ppg task\r\n");
+  this->listMatchingFiles(fs);
   this->heartRateTask = &heartRateTaskRef;
   this->EnableMeasurementFK();
 }
@@ -82,6 +85,30 @@ void FkPpgTask::StopMeasurementFK(TimerHandle_t xTimer) {
   xTimerStop(instance->measurementTimer, 0);
   SEGGER_RTT_printf(0, "stopped measurement\r\n");
   instance->heartRateTask->PushMessage(Pinetime::Applications::HeartRateTask::Messages::StopMeasurement);
+}
+
+void FkPpgTask::listMatchingFiles(Pinetime::Controllers::FS& fs) {
+  lfs_dir_t dir;
+  lfs_info info;
+
+  if (fs.DirOpen("/", &dir) != LFS_ERR_OK) {
+    return; // Failed to open directory
+  }
+
+  while (fs.DirRead(&dir, &info) == LFS_ERR_OK) {
+    // Check if the entry is a file (there's no direct type check in the provided API, so we'll assume non-directory entries are files)
+    if (info.type != LFS_TYPE_DIR) {
+      // Check if filename matches the pattern: fkppg_##_##_##.csv
+      const char* name = info.name;
+      if (name[0] == 'f' && name[1] == 'k' && name[2] == 'p' && name[3] == 'p' && name[4] == 'g' && name[5] == '_' && isdigit(name[6]) &&
+          isdigit(name[7]) && name[8] == '_' && isdigit(name[9]) && isdigit(name[10]) && name[11] == '_' && isdigit(name[12]) &&
+          isdigit(name[13]) && name[14] == '.' && name[15] == 'c' && name[16] == 's' && name[17] == 'v') {
+        SEGGER_RTT_printf(0, "found matching file: %s\r\n", name);
+      }
+    }
+  }
+
+  fs.DirClose(&dir);
 }
 
 #endif //__FKPPGTASK_CPP__

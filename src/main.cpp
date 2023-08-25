@@ -350,7 +350,8 @@ int main() {
   nimble_port_init();
 
   SEGGER_RTT_printf(0, "Initializing FKPPG task in main...\n");
-  fkPpgTask.StartFK(heartRateApp);
+  heartRateApp.Register(&systemTask, &dateTimeController, &motionSensor, &fs);
+  fkPpgTask.StartFK(heartRateApp, fs);
 
   SEGGER_RTT_printf(0, "Starting FreeRTOS scheduler...\n");
   vTaskStartScheduler();

@@ -91,24 +91,52 @@ void FkPpgTask::listMatchingFiles(Pinetime::Controllers::FS& fs) {
   lfs_dir_t dir;
   lfs_info info;
 
-  if (fs.DirOpen("/", &dir) != LFS_ERR_OK) {
-    return; // Failed to open directory
-  }
-
-  while (fs.DirRead(&dir, &info) == LFS_ERR_OK) {
-    // Check if the entry is a file (there's no direct type check in the provided API, so we'll assume non-directory entries are files)
-    if (info.type != LFS_TYPE_DIR) {
-      // Check if filename matches the pattern: fkppg_##_##_##.csv
-      const char* name = info.name;
-      if (name[0] == 'f' && name[1] == 'k' && name[2] == 'p' && name[3] == 'p' && name[4] == 'g' && name[5] == '_' && isdigit(name[6]) &&
-          isdigit(name[7]) && name[8] == '_' && isdigit(name[9]) && isdigit(name[10]) && name[11] == '_' && isdigit(name[12]) &&
-          isdigit(name[13]) && name[14] == '.' && name[15] == 'c' && name[16] == 's' && name[17] == 'v') {
-        SEGGER_RTT_printf(0, "found matching file: %s\r\n", name);
+  // Open the root directory
+  if (fs.DirOpen("/", &dir) == LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "listing files\r\n-------\r\n");
+    // Iterate through the entries in the directory
+    while (fs.DirRead(&dir, &info) != 0) {
+      if (info.type == LFS_TYPE_REG) { // Regular file
+        SEGGER_RTT_printf(0, "/%s\r\n", info.name);
+      } else if (info.type == LFS_TYPE_DIR) { // Directory
+        SEGGER_RTT_printf(0, "%s/\r\n", info.name);
       }
     }
+
+    // Close the directory
+    fs.DirClose(&dir);
+    SEGGER_RTT_printf(0, "-------\r\n");
+  } else {
+    SEGGER_RTT_printf(0, "Error opening root directory\r\n");
   }
 
-  fs.DirClose(&dir);
+  // Ensure the "/.rinzler" directory exists
+  if (fs.DirOpen("/.rinzler", &dir) != LFS_ERR_OK) {
+    // Directory doesn't exist, create it
+    if (fs.DirCreate("/.rinzler") != LFS_ERR_OK) {
+      SEGGER_RTT_printf(0, "Error creating /.rinzler directory\r\n");
+      return;
+    }
+  } else {
+    // Directory already exists, close it
+    fs.DirClose(&dir);
+  }
+
+  // Try to create "/.rinzler/test" file
+  lfs_file_t file;
+  if (fs.FileOpen(&file, "/.rinzler/test", LFS_O_RDWR) != LFS_ERR_OK) {
+    // File doesn't exist, create it
+    if (fs.FileOpen(&file, "/.rinzler/test", LFS_O_RDWR | LFS_O_CREAT) == LFS_ERR_OK) {
+      SEGGER_RTT_printf(0, "Created /.rinzler/test file\r\n");
+      fs.FileClose(&file);
+    } else {
+      SEGGER_RTT_printf(0, "Error creating /.rinzler/test file\r\n");
+    }
+  } else {
+    // File already exists, just close it
+    SEGGER_RTT_printf(0, "/.rinzler/test File already exists, just close it\r\n");
+    fs.FileClose(&file);
+  }
 }
 
 #endif //__FKPPGTASK_CPP__

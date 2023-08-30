@@ -88,7 +88,8 @@ void HeartRateTask::Work() {
         SEGGER_RTT_printf(0, "motion sensor is null\r\n");
       }
 
-      SEGGER_RTT_printf(0, "current hr, als, x, y, z: %u, %u, %d, %d, %d\r\n", hrs, als, motion_x, motion_y, motion_z);
+    //   SEGGER_RTT_printf(0, "current hr, als, x, y, z: %u, %u, %d, %d, %d\r\n", hrs, als, motion_x, motion_y, motion_z);
+      SEGGER_RTT_printf(0, ".");
       PushPPG_Data({hrs, als, motion_x, motion_y, motion_z});
     }
   }
@@ -147,6 +148,79 @@ void HeartRateTask::ClearPPG_Data() {
   SEGGER_RTT_printf(0, "PPG data array cleared\r\n");
 }
 
+int WriteData(PPG_Data* ppg_data_array,
+              size_t ppg_data_index,
+              Pinetime::Controllers::FS& fs,
+              Pinetime::Controllers::DateTime* dateTimeController) {
+  Pinetime::Controllers::DateTime::Months _month = dateTimeController->Month();
+  uint8_t month = static_cast<uint8_t>(_month);
+  uint8_t day = dateTimeController->Day();
+  uint8_t hour = dateTimeController->Hours();
+  uint8_t minute = dateTimeController->Minutes();
+
+  char path[32];
+  snprintf(path, sizeof(path), "/fk/fkppg_%02d%02d_%02d.csv", month, day, hour);
+
+  lfs_file_t file;
+  int fsOpRes;
+  lfs_info info;
+
+  // Check if the file exists
+  fsOpRes = fs.Stat(path, &info);
+  if (fsOpRes == LFS_ERR_NOENT) {
+    // File doesn't exist, create a new one
+    fsOpRes = fs.FileOpen(&file, path, LFS_O_WRONLY | LFS_O_CREAT);
+    if (fsOpRes != LFS_ERR_OK) {
+      SEGGER_RTT_printf(0, "ERR: Failed to create file %s, fsOpRes: %d\r\n", path, fsOpRes);
+      return fsOpRes;
+    }
+  } else {
+    // File exists, open it for appending
+    fsOpRes = fs.FileOpen(&file, path, LFS_O_WRONLY | LFS_O_APPEND);
+    if (fsOpRes != LFS_ERR_OK) {
+      SEGGER_RTT_printf(0, "ERR: Failed to open file %s, fsOpRes: %d\r\n", path, fsOpRes);
+      return fsOpRes;
+    }
+    // Print size before writing
+    SEGGER_RTT_printf(0, "Size(before dump) of the file %s: %d bytes\n", path, info.size);
+  }
+
+  // Dump data
+  for (size_t i = 0; i < ppg_data_index; i++) {
+    char buffer[128]; // Adjust buffer size if needed
+    int len = snprintf(buffer,
+                       sizeof(buffer),
+                       "%02d%02d%02d%02d,%lu,%lu,%d,%d,%d\n",
+                       month,
+                       day,
+                       hour,
+                       minute,
+                       ppg_data_array[i].hrs,
+                       ppg_data_array[i].als,
+                       ppg_data_array[i].motion_x,
+                       ppg_data_array[i].motion_y,
+                       ppg_data_array[i].motion_z);
+    fsOpRes = fs.FileWrite(&file, reinterpret_cast<const uint8_t*>(buffer), len);
+    if (fsOpRes < 0) {
+      SEGGER_RTT_printf(0, "ERR: Failed to write to file %s, fsOpRes: %d\r\n", path, fsOpRes);
+      break;
+    }
+  }
+
+  // Close the file
+  fs.FileClose(&file);
+
+  // Get and print size after writing
+  fsOpRes = fs.Stat(path, &info);
+  if (fsOpRes == LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "Size(after dump) of the file %s: %d bytes\n", path, info.size);
+  } else {
+    SEGGER_RTT_printf(0, "ERR: Failed to get file info for %s, fsOpRes: %d\r\n", path, fsOpRes);
+  }
+
+  return fsOpRes;
+}
+
 void HeartRateTask::SavePPG_Data() {
   if (ppg_data_size == 0) {
     SEGGER_RTT_printf(0, "PPG data array is empty\r\n");
@@ -171,61 +245,5 @@ void HeartRateTask::SavePPG_Data() {
     //   FIXME: add the logic before going to production
     //     return;
   }
-
-  Pinetime::Controllers::DateTime::Months _month = dateTimeController->Month();
-  uint8_t month = static_cast<uint8_t>(_month);
-  uint8_t day = dateTimeController->Day();
-  uint8_t hour = dateTimeController->Hours();
-  uint8_t minute = dateTimeController->Minutes();
-
-  char filename[32];
-  snprintf(filename, sizeof(filename), "/fkppg_%02d%02d_%02d.csv", month, day, hour);
-  lfs_file_t file;
-
-  // open file
-  if (!fs->Stat(filename, nullptr)) { // Use the Stat method from FS
-    // File doesn't exist, create a new one
-    SEGGER_RTT_printf(0, "Creating new file for the current hour: %s\n", filename);
-    if (!fs->FileOpen(&file, filename, LFS_O_RDWR)) {
-      return;
-    }
-
-    // Write CSV header for the new file
-    char header[] = "Timestamp, HRS, ALS, Motion X, Motion Y, Motion Z\n";
-    fs->FileWrite(&file, reinterpret_cast<const uint8_t*>(header), sizeof(header) - 1);
-  } else {
-    // File exists, append data to it
-    SEGGER_RTT_printf(0, "Appending to the existing file for the current hour: %s\n", filename);
-    if (!fs->FileOpen(&file, filename, LFS_O_RDWR)) {
-      return;
-    }
-  }
-
-  auto info = fs->GetFSSize();
-  SEGGER_RTT_printf(0, "Size(before dump) of the file %s: %d bytes\n", filename, info);
-
-  // dump data
-  for (size_t i = 0; i < ppg_data_index; i++) {
-    char buffer[128]; // Adjust buffer size if needed
-    int len = snprintf(buffer,
-                       sizeof(buffer),
-                       "%02d%02d%02d%02d,%lu,%lu,%d,%d,%d\n",
-                       month,
-                       day,
-                       hour,
-                       minute,
-                       ppg_data_array[i].hrs,
-                       ppg_data_array[i].als,
-                       ppg_data_array[i].motion_x,
-                       ppg_data_array[i].motion_y,
-                       ppg_data_array[i].motion_z);
-    fs->FileWrite(&file, reinterpret_cast<const uint8_t*>(buffer), len);
-  }
-
-  // Close the file
-  fs->FileClose(&file); // Adjust the call
-
-  // 5. Print the size of the file
-  info = fs->GetFSSize();
-  SEGGER_RTT_printf(0, "Size of the file %s: %d bytes\n", filename, info);
+  WriteData(ppg_data_array, ppg_data_index, *fs, dateTimeController);
 }

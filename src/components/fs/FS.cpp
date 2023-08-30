@@ -2,6 +2,7 @@
 #include <cstring>
 #include <littlefs/lfs.h>
 #include <lvgl/lvgl.h>
+#include "SEGGER_RTT.h"
 
 using namespace Pinetime::Controllers;
 
@@ -36,11 +37,16 @@ void FS::Init() {
   // reformat if we can't mount the filesystem
   // this should only happen on the first boot
   if (err != LFS_ERR_OK) {
+	SEGGER_RTT_printf(0, "FS: Formatting because mount returned %d\r\n", err);
     lfs_format(&lfs, &lfsConfig);
     err = lfs_mount(&lfs, &lfsConfig);
     if (err != LFS_ERR_OK) {
+	  SEGGER_RTT_printf(0, "FS: ERR: Mounting after format returned %d\r\n", err);
       return;
     }
+  }
+  else {
+	SEGGER_RTT_printf(0, "FS: Mounted\r\n");
   }
 
 #ifndef PINETIME_IS_RECOVERY

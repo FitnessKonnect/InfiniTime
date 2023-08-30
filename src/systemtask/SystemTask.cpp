@@ -17,6 +17,7 @@
 #include "main.h"
 #include "BootErrors.h"
 #include "heartratetask/FkPpgTask.h"
+#include "SEGGER_RTT.h"
 
 #include <memory>
 
@@ -148,6 +149,9 @@ void SystemTask::Work() {
   heartRateSensor.Init();
   heartRateSensor.Disable();
   heartRateApp.Start();
+  SEGGER_RTT_printf(0, "Initializing FKPPG task in main...\n");
+  heartRateApp.Register(this, &dateTimeController, &motionSensor, &fs);
+  fkPpgTask.StartFK(heartRateApp, fs);
 
   buttonHandler.Init(this);
 

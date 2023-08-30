@@ -87,13 +87,13 @@ void FkPpgTask::StopMeasurementFK(TimerHandle_t xTimer) {
   instance->heartRateTask->PushMessage(Pinetime::Applications::HeartRateTask::Messages::StopMeasurement);
 }
 
-void FkPpgTask::listMatchingFiles(Pinetime::Controllers::FS& fs) {
+int PrintDir(const char* path, Pinetime::Controllers::FS& fs) {
   lfs_dir_t dir;
   lfs_info info;
+  int fsOpRes = LFS_ERR_OK;
 
-  // Open the root directory
-  if (fs.DirOpen("/", &dir) == LFS_ERR_OK) {
-    SEGGER_RTT_printf(0, "listing files\r\n-------\r\n");
+  if ((fsOpRes = fs.DirOpen(path, &dir)) == LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "listing %s\r\n-------\r\n", path);
     // Iterate through the entries in the directory
     while (fs.DirRead(&dir, &info) != 0) {
       if (info.type == LFS_TYPE_REG) { // Regular file
@@ -107,35 +107,91 @@ void FkPpgTask::listMatchingFiles(Pinetime::Controllers::FS& fs) {
     fs.DirClose(&dir);
     SEGGER_RTT_printf(0, "-------\r\n");
   } else {
-    SEGGER_RTT_printf(0, "Error opening root directory\r\n");
+    SEGGER_RTT_printf(0, "ERR: List %s dir failed, fsOpRes: %d\r\n", path, fsOpRes);
+    return fsOpRes;
   }
+  return LFS_ERR_OK;
+}
 
-  // Ensure the "/.rinzler" directory exists
-  if (fs.DirOpen("/.rinzler", &dir) != LFS_ERR_OK) {
-    // Directory doesn't exist, create it
-    if (fs.DirCreate("/.rinzler") != LFS_ERR_OK) {
-      SEGGER_RTT_printf(0, "Error creating /.rinzler directory\r\n");
-      return;
-    }
-  } else {
-    // Directory already exists, close it
-    fs.DirClose(&dir);
-  }
-
-  // Try to create "/.rinzler/test" file
+int PrintFileData(const char* path, Pinetime::Controllers::FS& fs) {
   lfs_file_t file;
-  if (fs.FileOpen(&file, "/.rinzler/test", LFS_O_RDWR) != LFS_ERR_OK) {
-    // File doesn't exist, create it
-    if (fs.FileOpen(&file, "/.rinzler/test", LFS_O_RDWR | LFS_O_CREAT) == LFS_ERR_OK) {
-      SEGGER_RTT_printf(0, "Created /.rinzler/test file\r\n");
-      fs.FileClose(&file);
-    } else {
-      SEGGER_RTT_printf(0, "Error creating /.rinzler/test file\r\n");
-    }
-  } else {
-    // File already exists, just close it
-    SEGGER_RTT_printf(0, "/.rinzler/test File already exists, just close it\r\n");
+  lfs_info info;
+  char buffer[128]; // Buffer to read file data into
+  int fsOpRes;
+
+  // Open the file
+  fsOpRes = fs.FileOpen(&file, path, LFS_O_RDONLY);
+  if (fsOpRes != LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "ERR: Failed to open file %s, fsOpRes: %d\r\n", path, fsOpRes);
+    return fsOpRes;
+  }
+
+  // Get file information
+  fsOpRes = fs.Stat(path, &info);
+  if (fsOpRes != LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "ERR: Failed to get file info for %s, fsOpRes: %d\r\n", path, fsOpRes);
     fs.FileClose(&file);
+    return fsOpRes;
+  }
+
+  SEGGER_RTT_printf(0, "Reading file %s, size: %d bytes\r\n", path, info.size);
+
+  // Print the starting line for the file content
+  SEGGER_RTT_printf(0, "File %s ------------\r\n", path);
+
+  // Read and print the file data
+  while (true) {
+    int bytesRead = fs.FileRead(&file, reinterpret_cast<uint8_t*>(buffer), sizeof(buffer) - 1);
+    if (bytesRead < 0) {
+      SEGGER_RTT_printf(0, "ERR: Failed to read file %s, fsOpRes: %d\r\n", path, bytesRead);
+      fsOpRes = bytesRead;
+      break;
+    }
+
+    if (bytesRead == 0) {
+      // End of file
+      break;
+    }
+
+    // Null-terminate the read data to safely print it
+    buffer[bytesRead] = '\0';
+    SEGGER_RTT_printf(0, "%s", buffer);
+  }
+
+  // Print the ending line for the file content
+  SEGGER_RTT_printf(0, "------------\r\n");
+
+  // Close the file
+  fs.FileClose(&file);
+
+  return fsOpRes;
+}
+
+int DeleteFile(const char* path, Pinetime::Controllers::FS& fs) {
+  int fsOpRes = LFS_ERR_OK;
+
+  // Delete the file
+  fsOpRes = fs.FileDelete(path);
+  if (fsOpRes != LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "ERR: Failed to delete file %s, fsOpRes: %d\r\n", path, fsOpRes);
+  }
+  return fsOpRes;
+}
+
+void FkPpgTask::listMatchingFiles(Pinetime::Controllers::FS& fs) {
+  int fsOpRes = LFS_ERR_OK;
+
+  if ((fsOpRes = PrintDir("/fk", fs)) == LFS_ERR_OK) {
+    // FIXME: remove this before going to prod
+    PrintFileData("/fk/fkppg_0101_00.csv", fs);
+    DeleteFile("/fk/fkppg_0101_00.csv", fs);
+  } else {
+    fsOpRes = fs.DirCreate("/fk");
+    if (fsOpRes != LFS_ERR_OK) {
+      SEGGER_RTT_printf(0, "Error creating FK directory, fsOpRes: %d\r\n", fsOpRes);
+    } else {
+      SEGGER_RTT_printf(0, "FK directory created\r\n");
+    }
   }
 }
 

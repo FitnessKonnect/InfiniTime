@@ -44,25 +44,31 @@ void HeartRateTask::Work() {
     }
 
     if (xQueueReceive(messageQueue, &msg, delay)) {
+      SEGGER_RTT_printf(0, "HeartRateTask: received message %d\r\n", msg);
       switch (msg) {
         case Messages::GoToSleep:
+		  SEGGER_RTT_printf(0, "HeartRateTask: GoToSleep\r\n");
           StopMeasurement();
           state = States::Idle;
           break;
         case Messages::WakeUp:
+		  SEGGER_RTT_printf(0, "HeartRateTask: WakeUp\r\n");
           state = States::Running;
           if (measurementStarted) {
             StartMeasurement();
           }
           break;
         case Messages::StartMeasurement:
+		  SEGGER_RTT_printf(0, "HeartRateTask: StartMeasurement\r\n");
           if (measurementStarted) {
+            SEGGER_RTT_printf(0, "Measurement already started\r\n");
             break;
           }
           StartMeasurement();
           measurementStarted = true;
           break;
         case Messages::StopMeasurement:
+		  SEGGER_RTT_printf(0, "HeartRateTask: StopMeasurement\r\n");
           if (!measurementStarted) {
             break;
           }
@@ -152,21 +158,26 @@ int WriteData(PPG_Data* ppg_data_array,
               size_t ppg_data_index,
               Pinetime::Controllers::FS& fs,
               Pinetime::Controllers::DateTime* dateTimeController) {
+
+  SEGGER_RTT_printf(0, "Writing data to file ----------\r\n");
   Pinetime::Controllers::DateTime::Months _month = dateTimeController->Month();
   uint8_t month = static_cast<uint8_t>(_month);
   uint8_t day = dateTimeController->Day();
   uint8_t hour = dateTimeController->Hours();
   uint8_t minute = dateTimeController->Minutes();
+  SEGGER_RTT_printf(0, "Current time: %02d%02d%02d%02d\r\n", month, day, hour, minute);
 
   char path[32];
   snprintf(path, sizeof(path), "/fk/fkppg_%02d%02d_%02d.csv", month, day, hour);
+  SEGGER_RTT_printf(0, "Path: %s\r\n", path);
 
   lfs_file_t file;
-  int fsOpRes;
+  int fsOpRes = LFS_ERR_OK;
   lfs_info info;
 
-  // Check if the file exists
+  SEGGER_RTT_printf(0, "Stat 0 fsOpRes: %d\r\n", fsOpRes);
   fsOpRes = fs.Stat(path, &info);
+  SEGGER_RTT_printf(0, "Stat 1 fsOpRes: %d\r\n", fsOpRes);
   if (fsOpRes == LFS_ERR_NOENT) {
     // File doesn't exist, create a new one
     fsOpRes = fs.FileOpen(&file, path, LFS_O_WRONLY | LFS_O_CREAT);
@@ -174,9 +185,11 @@ int WriteData(PPG_Data* ppg_data_array,
       SEGGER_RTT_printf(0, "ERR: Failed to create file %s, fsOpRes: %d\r\n", path, fsOpRes);
       return fsOpRes;
     }
+	SEGGER_RTT_printf(0, "File %s created\r\n", path);
+	SEGGER_RTT_printf(0, "Size(before dump) of the file %s: %d bytes\n", path, info.size);
   } else {
     // File exists, open it for appending
-    fsOpRes = fs.FileOpen(&file, path, LFS_O_WRONLY | LFS_O_APPEND);
+    fsOpRes = fs.FileOpen(&file, path, LFS_O_WRONLY | LFS_O_APPEND | LFS_O_CREAT);
     if (fsOpRes != LFS_ERR_OK) {
       SEGGER_RTT_printf(0, "ERR: Failed to open file %s, fsOpRes: %d\r\n", path, fsOpRes);
       return fsOpRes;
@@ -212,11 +225,14 @@ int WriteData(PPG_Data* ppg_data_array,
 
   // Get and print size after writing
   fsOpRes = fs.Stat(path, &info);
+  SEGGER_RTT_printf(0, "Stat 2 fsOpRes: %d\r\n", fsOpRes);
   if (fsOpRes == LFS_ERR_OK) {
     SEGGER_RTT_printf(0, "Size(after dump) of the file %s: %d bytes\n", path, info.size);
   } else {
     SEGGER_RTT_printf(0, "ERR: Failed to get file info for %s, fsOpRes: %d\r\n", path, fsOpRes);
   }
+
+  SEGGER_RTT_printf(0, "Writing data to file done ----------\r\n");
 
   return fsOpRes;
 }

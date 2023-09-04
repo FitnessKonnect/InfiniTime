@@ -43,6 +43,9 @@ namespace Pinetime {
 
       void Register(System::SystemTask* systemTask, Controllers::DateTime* dateTimeController, Drivers::Bma421* motionSensor, Controllers::FS* fs);
 
+      void ClearPPG_Data();
+      void SavePPG_Data();
+
     private:
       static void Process(void* instance);
       void StartMeasurement();
@@ -66,8 +69,6 @@ namespace Pinetime {
       size_t ppg_data_size = 0;
 
       void PushPPG_Data(PPG_Data data);
-      void ClearPPG_Data();
-      void SavePPG_Data();
     };
 
   }

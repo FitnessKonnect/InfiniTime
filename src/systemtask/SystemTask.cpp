@@ -109,6 +109,7 @@ void SystemTask::Work() {
   watchdog.Setup(7);
   watchdog.Start();
   NRF_LOG_INFO("Last reset reason : %s", Pinetime::Drivers::Watchdog::ResetReasonToString(watchdog.ResetReason()));
+  SEGGER_RTT_printf(0, "Last reset reason : %s\n", Pinetime::Drivers::Watchdog::ResetReasonToString(watchdog.ResetReason()));
   APP_GPIOTE_INIT(2);
 
   spi.Init();

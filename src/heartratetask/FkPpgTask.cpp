@@ -85,6 +85,8 @@ void FkPpgTask::StopMeasurementFK(TimerHandle_t xTimer) {
   xTimerStop(instance->measurementTimer, 0);
   SEGGER_RTT_printf(0, "stopped measurement\r\n");
   instance->heartRateTask->PushMessage(Pinetime::Applications::HeartRateTask::Messages::StopMeasurement);
+//   instance->heartRateTask->SavePPG_Data();
+  instance->heartRateTask->ClearPPG_Data();
 }
 
 int PrintDir(const char* path, Pinetime::Controllers::FS& fs) {

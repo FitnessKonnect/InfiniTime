@@ -79,9 +79,14 @@ int FS::FileSeek(lfs_file_t* file_p, uint32_t pos) {
   return lfs_file_seek(&lfs, file_p, pos, LFS_SEEK_SET);
 }
 
+int FS::FileSync(lfs_file_t* file_p) {
+  return lfs_file_sync(&lfs, file_p);
+}
+
 int FS::FileDelete(const char* fileName) {
   return lfs_remove(&lfs, fileName);
 }
+
 
 int FS::DirOpen(const char* path, lfs_dir_t* lfs_dir) {
   return lfs_dir_open(&lfs, lfs_dir, path);

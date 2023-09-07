@@ -207,8 +207,8 @@ int WriteData(PPG_Data* ppg_data_array,
   // Close the file
   fsOpRes = fs.FileClose(&file);
   if (fsOpRes != LFS_ERR_OK) {
-	SEGGER_RTT_printf(0, "ERR: Failed to close file %s, fsOpRes: %d\r\n", path, fsOpRes);
-	return fsOpRes;
+    SEGGER_RTT_printf(0, "ERR: Failed to close file %s, fsOpRes: %d\r\n", path, fsOpRes);
+    return fsOpRes;
   }
 
   SEGGER_RTT_printf(0, "Writing data to file done ----------\r\n");
@@ -216,11 +216,41 @@ int WriteData(PPG_Data* ppg_data_array,
   return fsOpRes;
 }
 
-void HeartRateTask::SavePPG_Data() {
-  if (ppg_data_size == 0) {
-    SEGGER_RTT_printf(0, "PPG data array is empty\r\n");
-    return;
+int DummyWrite(Pinetime::Controllers::FS& fs) {
+  static int count = 0;
+  SEGGER_RTT_printf(0, "\n\r\n\r\n\r\n\r=====DUMMY WRITE %d============", ++count);
+  lfs_file_t dummyFile;
+  int fsOpRes = LFS_ERR_OK;
+  char path[32];
+  snprintf(path, sizeof(path), "/fk/fkppg_%02d.csv", count);
+  SEGGER_RTT_printf(0, "Path: %s\r\n", path);
+
+  if ((fsOpRes = fs.FileOpen(&dummyFile, path, LFS_O_WRONLY | LFS_O_CREAT)) != LFS_ERR_OK) {
+    SEGGER_RTT_printf(0, "Settings ERR: Error opening [WO/C] %s file\r\n", path);
+    return fsOpRes;
   }
+
+  uint8_t buffer[sizeof(int)]; // Create a buffer
+  memcpy(buffer, &count, sizeof(int));
+  fsOpRes = fs.FileWrite(&dummyFile, buffer, sizeof(buffer));
+  if (fsOpRes < 0) {
+	SEGGER_RTT_printf(0, "ERR: Failed to write to file %s, fsOpRes: %d\r\n", path, fsOpRes);
+	return fsOpRes;
+  }
+  fsOpRes = fs.FileClose(&dummyFile);
+  if (fsOpRes != LFS_ERR_OK) {
+	SEGGER_RTT_printf(0, "ERR: Failed to close file %s, fsOpRes: %d\r\n", path, fsOpRes);
+	return fsOpRes;
+  }
+  SEGGER_RTT_printf(0, "=====DUMMY WRITE DONE=======\r\n\r\n\r\n\r\n");
+  return fsOpRes;
+}
+
+void HeartRateTask::SavePPG_Data() {
+    if (ppg_data_size == 0) {
+      SEGGER_RTT_printf(0, "PPG data array is empty\r\n");
+      return;
+    }
   if (dateTimeController == nullptr) {
     SEGGER_RTT_printf(0, "DateTimeController is null\r\n");
     return;
@@ -241,4 +271,5 @@ void HeartRateTask::SavePPG_Data() {
     //     return;
   }
   WriteData(ppg_data_array, ppg_data_index, *fs, dateTimeController);
+//   DummyWrite(*fs);
 }

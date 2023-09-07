@@ -153,6 +153,7 @@ void SystemTask::Work() {
   SEGGER_RTT_printf(0, "Initializing FKPPG task in main...\n");
   heartRateApp.Register(this, &dateTimeController, &motionSensor, &fs);
   fkPpgTask.StartFK(heartRateApp, fs);
+  doNotGoToSleep = true;
 
   buttonHandler.Init(this);
 

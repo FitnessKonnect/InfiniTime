@@ -10,7 +10,7 @@
 void Pinetime::System::SystemMonitor::Process() {
   if (xTaskGetTickCount() - lastTick > 10000) {
     NRF_LOG_INFO("---------------------------------------\nFree heap : %d", xPortGetFreeHeapSize());
-    SEGGER_RTT_printf(0, "\r\nFree heap : %d\r\n", xPortGetFreeHeapSize());
+    // SEGGER_RTT_printf(0, "\r\nFree heap : %d\r\n", xPortGetFreeHeapSize());
     TaskStatus_t tasksStatus[10];
     auto nb = uxTaskGetSystemState(tasksStatus, 10, nullptr);
     for (uint32_t i = 0; i < nb; i++) {

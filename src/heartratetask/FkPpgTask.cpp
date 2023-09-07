@@ -16,7 +16,7 @@ FkPpgTask::FkPpgTask(Drivers::Hrs3300& heartRateSensor, Pinetime::Drivers::Bma42
     xTimerCreate("PPG-Measurement", pdMS_TO_TICKS(MEASUREMENT_DURATION), pdFALSE, this, FkPpgTask::StopMeasurementFK);
 
   if (this->waitTimer != NULL) {
-    SEGGER_RTT_printf(0, "waitTimer was created successfully.\r\n");
+    SEGGER_RTT_printf(0, "\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\nwaitTimer was created successfully.\r\n");
   }
 
   if (!this->measurementTimer) {
@@ -85,7 +85,7 @@ void FkPpgTask::StopMeasurementFK(TimerHandle_t xTimer) {
   xTimerStop(instance->measurementTimer, 0);
   SEGGER_RTT_printf(0, "stopped measurement\r\n");
   instance->heartRateTask->PushMessage(Pinetime::Applications::HeartRateTask::Messages::StopMeasurement);
-//   instance->heartRateTask->SavePPG_Data();
+  instance->heartRateTask->SavePPG_Data();
   instance->heartRateTask->ClearPPG_Data();
 }
 
